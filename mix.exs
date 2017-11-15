@@ -24,7 +24,8 @@ defmodule Bridge.MixProject do
     [
       {:radar, github: "ironbay/radar"},
       {:fig, github: "ironbay/fig"},
-      {:slack, "~> 0.12.0"}
+      {:slack, "~> 0.12.0"},
+      {:distillery, "~> 1.4", runtime: false},
     ]
   end
 end
