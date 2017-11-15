@@ -23,4 +23,8 @@ RUN cp -a /tmp/_build .
 RUN ls -lah
 RUN mix release
 
+EXPOSE 12000
+EXPOSE 13000
+EXPOSE 14000
+
 CMD mix run --no-halt

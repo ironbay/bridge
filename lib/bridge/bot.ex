@@ -8,7 +8,6 @@ defmodule Bridge.Bot do
 			|> Enum.flat_map(fn {channel, groups} ->
 				Enum.map(groups, fn group -> {group, channel} end)
 			end)
-			|> IO.inspect
 			|> Enum.group_by(fn {group, _} -> group end, fn {_, channel} -> channel end)
 			|> Enum.into(%{})
 			|> IO.inspect
