@@ -26,6 +26,7 @@ defmodule Bridge.MixProject do
       {:fig, github: "ironbay/fig"},
       {:slack, "~> 0.12.0"},
       {:distillery, "~> 1.4", runtime: false},
+      {:bimap, "~> 0.1"}
     ]
   end
 end

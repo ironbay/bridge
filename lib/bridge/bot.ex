@@ -2,40 +2,48 @@ defmodule Bridge.Bot do
 	use Slack
 
 	def handle_connect(slack, state) do
-		
-		reverse =
-			state.channels
-			|> Enum.flat_map(fn {channel, groups} ->
-				Enum.map(groups, fn group -> {group, channel} end)
-			end)
-			|> Enum.group_by(fn {group, _} -> group end, fn {_, channel} -> channel end)
-			|> Enum.into(%{})
-			|> IO.inspect
+	
+		subs =
+			state.groups
+			|> Enum.reduce(BiMultiMap.new, &BiMultiMap.put(&2, &1))
 
-		reverse
-		|> Map.keys
+		subs
+		|> BiMultiMap.values
 		|> Enum.map(&group_name/1)
 		|> Enum.map(&Radar.join/1)
-		
-
-		{:ok, Map.put(state, :reverse, reverse)}
+	
+		{:ok,
+			state
+			|> Map.put(:subs, subs)
+		}
 	end
 
 	def handle_event(message = %{type: "message", user: sender, channel: channel}, slack, state) when binary_part(channel, 0, 1) === "C" do
 		user = Map.get(slack.users, sender)
-		message = Map.put(message, :sender, %{
-			team: slack.team.name,
-			name: user.name,
-			image: user.profile.image_192,
-		})
+		text =
+			message.text
+			|> Bridge.Slack.tags
+			|> Enum.reduce(message.text, fn [match, user], collect ->
+				name = Dynamic.get(slack.users, [user, :name]) || user
+				String.replace(collect, match, "<@#{name}>")
+			end)
+			
+		message =
+			message
+			|> Map.put(:sender, %{
+				team: slack.team.name,
+				name: user.name,
+				image: user.profile.image_192,
+			})
+			|> Map.put(:text, text)
 
 		channel =
 			slack.channels
 			|> Map.get(message.channel)
 			|> Map.get(:name)
 		
-		state.channels
-		|> Map.get("#" <> channel, [])
+		state.subs
+		|> BiMultiMap.get(channel)
 		|> Enum.each(&broadcast(&1, message))
 
 		{:ok, state}
@@ -44,8 +52,8 @@ defmodule Bridge.Bot do
 	def handle_event(_, _, state), do: {:ok, state}
 
 	def handle_info({:message, group, message = %{sender: %{team: team}}}, slack = %{team:  %{name: me}}, state) when team !== me do
-		state.reverse
-		|> Map.get(group, [])
+		state.subs
+		|> BiMultiMap.get_keys(group)
 		|> Enum.map(fn channel ->
 			Slack.Web.Chat.post_message(channel, message.text, %{
 				icon_url: message.sender.image,
